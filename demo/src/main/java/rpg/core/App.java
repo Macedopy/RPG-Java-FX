@@ -1,24 +1,18 @@
 package rpg.core;
 
-import java.io.IOException;
+import javafx.application.Application;
+import javafx.stage.Stage;
+import rpg.gui.MainMenu;
 
-import rpg.infrastructure.Constants;
-import rpg.infrastructure.server.ManipulationServer; 
-
-public class App 
+public class App extends Application
 {
     public static void main(String[] args) {
-        ManipulationServer server = new ManipulationServer(); 
+        launch(args);
+    }
 
-        try {
-            server.start(Constants.hostId);
-        } catch (IOException e) {
-            e.printStackTrace();
-            try {
-                server.stop(); 
-            } catch (IOException closeE) {
-                closeE.printStackTrace();
-            }
-        }
+    @Override
+    public void start(Stage primaryStage) {
+        MainMenu mainMenu = new MainMenu(primaryStage);
+        mainMenu.show();
     }
 }
