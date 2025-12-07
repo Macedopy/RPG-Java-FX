@@ -1,5 +1,7 @@
 package rpg.gui;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -10,10 +12,12 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import javafx.util.Duration;
 import rpg.models.Personagem;
 import rpg.models.Inimigo;
 import rpg.models.Item;
@@ -29,11 +33,15 @@ public class GameScreen {
     private String currentChapter = "Capítulo 1 - O Despertar";
     private String currentLocation = "Entrada da Floresta";
     private TextArea logArea;
+    private BorderPane root;
+    private VBox playerInfoPanel;
+    private VBox enemyInfoPanel;
     private Inimigo inimigoAtual;
     private boolean emCombate = false;
     private int progressoHistoria = 0;
     private int exploracoes = 0;
     private List<Button> attackButtons = new ArrayList<>();
+    private javafx.scene.Node savedCenter;
 
     public GameScreen(Stage stage, Personagem jogador) {
         this.stage = stage;
@@ -41,7 +49,7 @@ public class GameScreen {
     }
 
     public void show() {
-        BorderPane root = new BorderPane();
+        root = new BorderPane();
         root.setPadding(new Insets(20));
 
         // Top: Chapter and location info
@@ -57,7 +65,10 @@ public class GameScreen {
         topBox.getChildren().addAll(chapterLabel, locationLabel);
         root.setTop(topBox);
 
-        // Center: Game log
+        // Initialize info panels
+        initializeInfoPanels();
+
+        // Center: Game log (will be replaced with split layout during combat)
         logArea = new TextArea();
         logArea.setEditable(false);
         logArea.setPrefRowCount(10);
@@ -107,7 +118,7 @@ public class GameScreen {
                                     inventoryButton, statsButton, advanceButton, backButton);
         root.setBottom(buttonBox);
 
-        Scene scene = new Scene(root, 900, 700);
+        Scene scene = new Scene(root, 1200, 700);
         stage.setTitle("RPG Game - " + currentChapter);
         stage.setScene(scene);
         stage.show();
@@ -154,8 +165,11 @@ public class GameScreen {
         logArea.appendText("Ataque: " + inimigoAtual.getAtaque() + "\n");
         logArea.appendText("Defesa: " + inimigoAtual.getDefesa() + "\n\n");
 
-        // Habilitar botões de ataque
+        // Switch to combat layout
         Platform.runLater(() -> {
+            updateEnemyInfoPanel();
+            switchToCombatLayout();
+            // Habilitar botões de ataque
             for (Button btn : attackButtons) {
                 btn.setDisable(false);
             }
@@ -174,6 +188,9 @@ public class GameScreen {
         logArea.appendText("\nARMADILHA! Você recebeu " + dano + " de dano!\n");
         logArea.appendText("HP restante: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
 
+        // Update player info panel
+        Platform.runLater(() -> updatePlayerInfoPanel());
+
         if (!jogador.estaVivo()) {
             gameOver();
         }
@@ -183,14 +200,6 @@ public class GameScreen {
         if (!emCombate || inimigoAtual == null) {
             logArea.appendText("Não há inimigos próximos para atacar.\n\n");
             return;
-        }
-
-        // Reset special abilities if needed
-        if (jogador instanceof Fuzileiro) {
-            ((Fuzileiro) jogador).resetarUsosRajada();
-        }
-        if (jogador instanceof Berserker) {
-            ((Berserker) jogador).resetarUsosAtaqueDuplo();
         }
 
         // Player turn
@@ -283,6 +292,9 @@ public class GameScreen {
         jogador.receberDano(dano);
         logArea.appendText("Você recebeu " + dano + " de dano!\n");
         logArea.appendText("Seu HP: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
+
+        // Update player info panel
+        Platform.runLater(() -> updatePlayerInfoPanel());
     }
 
     private void vitoriaCombate() {
@@ -291,26 +303,57 @@ public class GameScreen {
         jogador.setNivel(jogador.getNivel() + 1);
         logArea.appendText("Nível aumentado para: " + jogador.getNivel() + "\n\n");
 
-        emCombate = false;
-        inimigoAtual = null;
+        // Reset special abilities after defeating enemy
+        if (jogador instanceof Fuzileiro) {
+            ((Fuzileiro) jogador).resetarUsosRajada();
+        }
+        if (jogador instanceof Berserker) {
+            ((Berserker) jogador).resetarUsosAtaqueDuplo();
+        }
 
-        // Disable attack button
+        // Update panels to show defeated status
         Platform.runLater(() -> {
-            ((Button) ((HBox) ((BorderPane) logArea.getParent()).getBottom()).getChildren().get(1)).setDisable(true);
+            updateEnemyInfoPanel();
+            updatePlayerInfoPanel();
         });
+
+        // Delay before hiding combat screens
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            emCombate = false;
+            inimigoAtual = null;
+            // Switch back to normal layout
+            Platform.runLater(() -> {
+                switchToNormalLayout();
+                updatePlayerInfoPanel();
+                // Disable attack buttons
+                for (Button btn : attackButtons) {
+                    btn.setDisable(true);
+                }
+            });
+        }));
+        timeline.play();
     }
 
     private void derrotaCombate() {
         logArea.appendText("\nDERROTA! Você foi derrotado...\n\n");
 
-        // Disable attack buttons immediately
+        // Update panels to show defeated status
         Platform.runLater(() -> {
-            for (Button btn : attackButtons) {
-                btn.setDisable(true);
-            }
+            updatePlayerInfoPanel();
+            updateEnemyInfoPanel();
         });
 
-        gameOver();
+        // Delay before hiding combat screens and game over
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(3), e -> {
+            // Disable attack buttons
+            Platform.runLater(() -> {
+                for (Button btn : attackButtons) {
+                    btn.setDisable(true);
+                }
+            });
+            gameOver();
+        }));
+        timeline.play();
     }
 
     private void transferirLoot() {
@@ -338,6 +381,10 @@ public class GameScreen {
                     }
                 }
                 logArea.appendText("\n");
+
+                // Update player info panel
+                Platform.runLater(() -> updatePlayerInfoPanel());
+
                 return;
             }
         }
@@ -352,7 +399,7 @@ public class GameScreen {
         }
 
         // Save current center content
-        BorderPane root = (BorderPane) logArea.getParent();
+        savedCenter = root.getCenter();
 
         // Create inventory pane
         BorderPane inventoryPane = new BorderPane();
@@ -379,15 +426,15 @@ public class GameScreen {
             Item selectedItem = itemListView.getSelectionModel().getSelectedItem();
             if (selectedItem != null) {
                 usarItemSelecionado(selectedItem);
-                // Return to log area
-                root.setCenter(logArea);
+                // Return to previous layout
+                root.setCenter(savedCenter);
             }
         });
 
         Button backButton = new Button("Voltar ao Jogo");
         backButton.setOnAction(e -> {
-            // Return to log area
-            root.setCenter(logArea);
+            // Return to previous layout
+            root.setCenter(savedCenter);
         });
 
         buttonBox.getChildren().addAll(useButton, backButton);
@@ -405,6 +452,10 @@ public class GameScreen {
                 logArea.appendText(log + "\n");
             }
             logArea.appendText("\n");
+
+            // Update player info panel
+            Platform.runLater(() -> updatePlayerInfoPanel());
+
         } else {
             logArea.appendText("Não foi possível usar o item.\n\n");
         }
@@ -617,6 +668,7 @@ public class GameScreen {
         if (lastLine.startsWith("DANO TOTAL:")) {
             int dano = Integer.parseInt(lastLine.split(":")[1].trim());
             inimigoAtual.receberDano(dano);
+            Platform.runLater(() -> updateEnemyInfoPanel());
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
@@ -638,6 +690,7 @@ public class GameScreen {
         if (lastLine.startsWith("DANO TOTAL:")) {
             int dano = Integer.parseInt(lastLine.split(":")[1].trim());
             inimigoAtual.receberDano(dano);
+            Platform.runLater(() -> updateEnemyInfoPanel());
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
@@ -658,6 +711,7 @@ public class GameScreen {
         if (logs.get(0).matches("\\d+")) {
             int dano = Integer.parseInt(logs.get(0));
             inimigoAtual.receberDano(dano);
+            Platform.runLater(() -> updateEnemyInfoPanel());
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
@@ -678,6 +732,7 @@ public class GameScreen {
         if (logs.get(0).matches("\\d+")) {
             int dano = Integer.parseInt(logs.get(0));
             inimigoAtual.receberDano(dano);
+            Platform.runLater(() -> updateEnemyInfoPanel());
         }
         if (inimigoAtual.estaVivo()) {
             logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
@@ -784,5 +839,106 @@ public class GameScreen {
             logArea.appendText("Sem mana para Raio Arcano!\n");
         }
         turnoInimigo();
+    }
+
+    private void initializeInfoPanels() {
+        // Player info panel
+        playerInfoPanel = new VBox(10);
+        playerInfoPanel.setPadding(new Insets(10));
+        playerInfoPanel.setStyle("-fx-background-color: #e8f5e8; -fx-border-color: #4caf50; -fx-border-width: 2;");
+
+        Label playerTitle = new Label("JOGADOR");
+        playerTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        Label playerName = new Label("Nome: " + jogador.getNome());
+        Label playerClass = new Label("Classe: " + jogador.getClasse());
+        Label playerLevel = new Label("Nível: " + jogador.getNivel());
+        Label playerHP = new Label("HP: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax());
+        Label playerAttack = new Label("Ataque: " + jogador.getAtaque());
+        Label playerDefense = new Label("Defesa: " + jogador.getDefesa());
+
+        playerInfoPanel.getChildren().addAll(playerTitle, playerName, playerClass, playerLevel, playerHP, playerAttack, playerDefense);
+
+        // Enemy info panel (initially empty)
+        enemyInfoPanel = new VBox(10);
+        enemyInfoPanel.setPadding(new Insets(10));
+        enemyInfoPanel.setStyle("-fx-background-color: #ffebee; -fx-border-color: #f44336; -fx-border-width: 2;");
+
+        Label enemyTitle = new Label("INIMIGO");
+        enemyTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        enemyInfoPanel.getChildren().add(enemyTitle);
+    }
+
+    private void updatePlayerInfoPanel() {
+        if (playerInfoPanel == null) return;
+
+        // Update HP and other stats
+        Label hpLabel = (Label) playerInfoPanel.getChildren().get(4);
+        if (jogador.getPontosVida() <= 0) {
+            hpLabel.setText("DERROTADO");
+            hpLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+        } else {
+            hpLabel.setText("HP: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax());
+            hpLabel.setStyle(""); // Reset style
+        }
+
+        Label levelLabel = (Label) playerInfoPanel.getChildren().get(3);
+        levelLabel.setText("Nível: " + jogador.getNivel());
+    }
+
+    private void updateEnemyInfoPanel() {
+        if (enemyInfoPanel == null || inimigoAtual == null) return;
+
+        enemyInfoPanel.getChildren().clear();
+
+        Label enemyTitle = new Label("INIMIGO");
+        enemyTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        Label enemyName = new Label("Nome: " + inimigoAtual.getNome());
+        Label enemyProfession = new Label("Profissão: " + inimigoAtual.getProfissaoAnterior());
+
+        Label enemyHP;
+        if (inimigoAtual.getPontosVida() <= 0) {
+            enemyHP = new Label("DERROTADO");
+            enemyHP.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+        } else {
+            enemyHP = new Label("HP: " + inimigoAtual.getPontosVida());
+        }
+
+        Label enemyAttack = new Label("Ataque: " + inimigoAtual.getAtaque());
+        Label enemyDefense = new Label("Defesa: " + inimigoAtual.getDefesa());
+
+        enemyInfoPanel.getChildren().addAll(enemyTitle, enemyName, enemyProfession, enemyHP, enemyAttack, enemyDefense);
+    }
+
+    private void switchToCombatLayout() {
+        BorderPane root = (BorderPane) logArea.getParent();
+        if (root == null) return;
+
+        // Create HBox for split layout
+        HBox combatLayout = new HBox(10);
+        combatLayout.setPadding(new Insets(10));
+
+        // Left side: Player info
+        combatLayout.getChildren().add(playerInfoPanel);
+        HBox.setHgrow(playerInfoPanel, Priority.ALWAYS);
+
+        // Center: Game log
+        combatLayout.getChildren().add(logArea);
+        HBox.setHgrow(logArea, Priority.ALWAYS);
+
+        // Right side: Enemy info
+        combatLayout.getChildren().add(enemyInfoPanel);
+        HBox.setHgrow(enemyInfoPanel, Priority.ALWAYS);
+
+        root.setCenter(combatLayout);
+    }
+
+    private void switchToNormalLayout() {
+        BorderPane root = (BorderPane) logArea.getParent();
+        if (root == null) return;
+
+        root.setCenter(logArea);
     }
 }
