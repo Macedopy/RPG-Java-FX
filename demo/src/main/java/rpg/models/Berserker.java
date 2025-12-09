@@ -93,28 +93,28 @@ public class Berserker extends Personagem {
 
     public List<String> ataqueDuplo(String nomeAlvo, int defesaAlvo) {
         List<String> logAcoes = new ArrayList<>();
-        
+
         if (usosAtaqueDuplo <= 0) {
-            logAcoes.add("Ataque Duplo indisponivel! Usos restantes: 0.");
+            logAcoes.add("❌ Ataque Duplo indisponível! Usos restantes: 0.");
             logAcoes.add("DANO TOTAL: 0"); // Necessário para o servidor saber que o dano é zero
             return logAcoes;
         }
 
-        logAcoes.add("--- HABILIDADE: ATAQUE DUPLO (Usos: " + usosAtaqueDuplo + "/" + usosAtaqueDuploMaximo + ") ---");
-        
+        logAcoes.add("🔥 **HABILIDADE: ATAQUE DUPLO** (Usos: " + usosAtaqueDuplo + "/" + usosAtaqueDuploMaximo + ") 🔥");
+
         LogAtaque ataqueEsquerdo = executarAtaqueInterno(
-            nomeEspadaEsquerda, 
-            danoEspadaEsquerda, 
-            nomeAlvo, 
+            nomeEspadaEsquerda,
+            danoEspadaEsquerda,
+            nomeAlvo,
             defesaAlvo,
             true
         );
         logAcoes.add(ataqueEsquerdo.toString());
 
         LogAtaque ataqueDireito = executarAtaqueInterno(
-            nomeEspadaDireita, 
-            danoEspadaDireita, 
-            nomeAlvo, 
+            nomeEspadaDireita,
+            danoEspadaDireita,
+            nomeAlvo,
             defesaAlvo,
             true
         );
@@ -130,23 +130,23 @@ public class Berserker extends Personagem {
         String resultadoAtaque;
 
         if (acertos == 2) {
-            int bonusCritico = danoBaseTotal; 
-            danoTotalAposCritico += bonusCritico; 
-            resultadoAtaque = String.format("DANO CRITICO! As duas espadas acertaram! (Bonus: +%d)", bonusCritico);
+            int bonusCritico = danoBaseTotal;
+            danoTotalAposCritico += bonusCritico;
+            resultadoAtaque = String.format("💥 DANO CRÍTICO! As duas espadas acertaram! (Bônus: +%d) 💥", bonusCritico);
             comboAtual = Math.min(comboAtual + 2, comboMaximo);
         } else if (acertos == 1) {
-            resultadoAtaque = "Um acerto, um bloqueio. (Dano Normal)";
+            resultadoAtaque = "⚔️ Um acerto, um bloqueio. (Dano Normal) ⚔️";
             comboAtual = Math.min(comboAtual + 1, comboMaximo);
         } else {
-            resultadoAtaque = "Ambas espadas bloqueadas! Nenhum dano causado.";
+            resultadoAtaque = "🛡️ Ambas espadas bloqueadas! Nenhum dano causado. 🛡️";
             comboAtual = 0;
         }
-        
+
         logAcoes.add(">> Resultado: " + resultadoAtaque + " <<");
-        logAcoes.add("DANO TOTAL: " + danoTotalAposCritico);
+        logAcoes.add("💥 DANO TOTAL: " + danoTotalAposCritico + " 💥");
 
         usosAtaqueDuplo--;
-        
+
         return logAcoes;
     }
     

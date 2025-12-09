@@ -34,12 +34,15 @@ public class GameScreen {
     private String currentLocation = "Entrada da Floresta";
     private TextArea logArea;
     private BorderPane root;
+    private Label chapterLabel;
+    private Label locationLabel;
     private VBox playerInfoPanel;
     private VBox enemyInfoPanel;
     private Inimigo inimigoAtual;
     private boolean emCombate = false;
     private int progressoHistoria = 0;
     private int exploracoes = 0;
+    private int inimigosDerrotadosNoCapitulo = 0;
     private List<Button> attackButtons = new ArrayList<>();
     private javafx.scene.Node savedCenter;
 
@@ -56,10 +59,10 @@ public class GameScreen {
         VBox topBox = new VBox(10);
         topBox.setAlignment(Pos.CENTER);
 
-        Label chapterLabel = new Label(currentChapter);
+        chapterLabel = new Label(currentChapter);
         chapterLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-        Label locationLabel = new Label("Localização: " + currentLocation);
+        locationLabel = new Label("Localização: " + currentLocation);
         locationLabel.setStyle("-fx-font-size: 16px;");
 
         topBox.getChildren().addAll(chapterLabel, locationLabel);
@@ -73,6 +76,7 @@ public class GameScreen {
         logArea.setEditable(false);
         logArea.setPrefRowCount(10);
         logArea.setWrapText(true);
+        logArea.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 14px; -fx-background-color: #f5f5f5; -fx-border-color: #cccccc; -fx-border-width: 1;");
         logArea.setText("Bem-vindo à Floresta Sombria!\n" +
                        "Suas engrenagens começam a rodar e o seu corpo inteiro liga.\n" +
                        "Um holograma do Dr. Bruno aparece:\n" +
@@ -158,12 +162,12 @@ public class GameScreen {
                                   80 + (nivel * 20), 12 + (nivel * 3), 8 + (nivel * 2), nivel);
 
         emCombate = true;
-        logArea.appendText("\nENCONTRO HOSTIL!\n");
-        logArea.appendText("Inimigo: " + inimigoAtual.getNome() + "\n");
-        logArea.appendText("Profissão: " + inimigoAtual.getProfissaoAnterior() + "\n");
-        logArea.appendText("HP: " + inimigoAtual.getPontosVida() + "\n");
-        logArea.appendText("Ataque: " + inimigoAtual.getAtaque() + "\n");
-        logArea.appendText("Defesa: " + inimigoAtual.getDefesa() + "\n\n");
+        logArea.appendText("\n⚔️ ENCONTRO HOSTIL! ⚔️\n");
+        logArea.appendText("👹 Inimigo: " + inimigoAtual.getNome() + "\n");
+        logArea.appendText("💼 Profissão: " + inimigoAtual.getProfissaoAnterior() + "\n");
+        logArea.appendText("❤️ HP: " + inimigoAtual.getPontosVida() + "\n");
+        logArea.appendText("⚔️ Ataque: " + inimigoAtual.getAtaque() + "\n");
+        logArea.appendText("🛡️ Defesa: " + inimigoAtual.getDefesa() + "\n\n");
 
         // Switch to combat layout
         Platform.runLater(() -> {
@@ -179,14 +183,23 @@ public class GameScreen {
     private void encontrarItem() {
         Item item = new Item("Nanoreparador", "Cura HP", "cura", 40, 1);
         jogador.getInventario().adicionarItem(item);
-        logArea.appendText("\nItem encontrado: " + item.getNome() + "\n\n");
+        logArea.appendText("\n🎁 Item encontrado: " + item.getNome() + " 🎁\n\n");
     }
 
     private void armadilha() {
         int dano = (int) (Math.random() * 20) + 10;
         jogador.receberDano(dano);
-        logArea.appendText("\nARMADILHA! Você recebeu " + dano + " de dano!\n");
-        logArea.appendText("HP restante: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
+        logArea.appendText("\n💥 ARMADILHA! Você recebeu " + dano + " de dano! 💥\n");
+        logArea.appendText("❤️ HP restante: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
+
+        // Screen flash effect for danger
+        String originalStyle = root.getStyle();
+        root.setStyle("-fx-background-color: #ffcccc;");
+        Timeline flashTimeline = new Timeline(
+            new KeyFrame(Duration.millis(150), e -> root.setStyle("-fx-background-color: #ffffff;")),
+            new KeyFrame(Duration.millis(300), e -> root.setStyle(originalStyle))
+        );
+        flashTimeline.play();
 
         // Update player info panel
         Platform.runLater(() -> updatePlayerInfoPanel());
@@ -287,11 +300,31 @@ public class GameScreen {
             return;
         }
 
-        logArea.appendText("\n>>> Turno do Inimigo <<<\n");
+        // Disable attack buttons during enemy turn
+        for (Button btn : attackButtons) {
+            btn.setDisable(true);
+        }
+
+        logArea.appendText("\n🔴 **TURNO DO INIMIGO** 🔴\n");
         int dano = inimigoAtual.calcularDano();
         jogador.receberDano(dano);
-        logArea.appendText("Você recebeu " + dano + " de dano!\n");
-        logArea.appendText("Seu HP: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
+        logArea.appendText("💥 Você recebeu " + dano + " de dano! 💥\n");
+        logArea.appendText("❤️ Seu HP: " + jogador.getPontosVida() + "/" + jogador.getPontosVidaMax() + "\n\n");
+
+        // Screen flash effect for damage taken
+        String originalStyle = root.getStyle();
+        root.setStyle("-fx-background-color: #ffcccc;");
+        Timeline flashTimeline = new Timeline(
+            new KeyFrame(Duration.millis(150), e -> root.setStyle("-fx-background-color: #ffffff;")),
+            new KeyFrame(Duration.millis(300), e -> {
+                // Re-enable attack buttons after enemy turn
+                for (Button btn : attackButtons) {
+                    btn.setDisable(false);
+                }
+                root.setStyle(originalStyle);
+            })
+        );
+        flashTimeline.play();
 
         // Update player info panel
         Platform.runLater(() -> updatePlayerInfoPanel());
@@ -309,6 +342,18 @@ public class GameScreen {
         }
         if (jogador instanceof Berserker) {
             ((Berserker) jogador).resetarUsosAtaqueDuplo();
+        }
+
+        // Increment enemies defeated counter
+        inimigosDerrotadosNoCapitulo++;
+
+        // Check if chapter should advance (2 enemies defeated)
+        if (inimigosDerrotadosNoCapitulo >= 2 && progressoHistoria < 3) {
+            // Delay before advancing story
+            Timeline advanceTimeline = new Timeline(new KeyFrame(Duration.seconds(2), e -> {
+                avancarHistoria();
+            }));
+            advanceTimeline.play();
         }
 
         // Update panels to show defeated status
@@ -493,6 +538,7 @@ public class GameScreen {
 
         progressoHistoria++;
         exploracoes = 0;
+        inimigosDerrotadosNoCapitulo = 0;
 
         switch (progressoHistoria) {
             case 1:
@@ -518,8 +564,8 @@ public class GameScreen {
         logArea.appendText("A cidade está em ruínas...\n\n");
 
         Platform.runLater(() -> {
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(0)).setText(currentChapter);
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(1)).setText("Localização: " + currentLocation);
+            chapterLabel.setText(currentChapter);
+            locationLabel.setText("Localização: " + currentLocation);
             stage.setTitle("RPG Game - " + currentChapter);
         });
     }
@@ -533,8 +579,8 @@ public class GameScreen {
         logArea.appendText("Você encontra o laboratório do Dr. Bruno.\n\n");
 
         Platform.runLater(() -> {
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(0)).setText(currentChapter);
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(1)).setText("Localização: " + currentLocation);
+            chapterLabel.setText(currentChapter);
+            locationLabel.setText("Localização: " + currentLocation);
             stage.setTitle("RPG Game - " + currentChapter);
         });
     }
@@ -558,8 +604,8 @@ public class GameScreen {
         logArea.appendText("Defesa: " + chefeFinal.getDefesa() + "\n\n");
 
         Platform.runLater(() -> {
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(0)).setText(currentChapter);
-            ((Label) ((VBox) ((BorderPane) logArea.getParent()).getTop()).getChildren().get(1)).setText("Localização: " + currentLocation);
+            chapterLabel.setText(currentChapter);
+            locationLabel.setText("Localização: " + currentLocation);
             stage.setTitle("RPG Game - " + currentChapter);
             for (Button btn : attackButtons) {
                 btn.setDisable(false);
@@ -666,9 +712,11 @@ public class GameScreen {
         }
         String lastLine = logs.get(logs.size() - 1);
         if (lastLine.startsWith("DANO TOTAL:")) {
-            int dano = Integer.parseInt(lastLine.split(":")[1].trim());
-            inimigoAtual.receberDano(dano);
-            Platform.runLater(() -> updateEnemyInfoPanel());
+            try {
+                int dano = Integer.parseInt(lastLine.split(":")[1].trim());
+                inimigoAtual.receberDano(dano);
+                Platform.runLater(() -> updateEnemyInfoPanel());
+            } catch (NumberFormatException ignored) {}
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
@@ -681,63 +729,124 @@ public class GameScreen {
     private void ataqueDuploBerserker() {
         if (!emCombate || inimigoAtual == null || !jogador.estaVivo()) return;
 
+        // Green screen flash for player attack
+        String originalStyle = root.getStyle();
+        root.setStyle("-fx-background-color: #e8f5e8;");
+        Timeline flashTimeline = new Timeline(
+            new KeyFrame(Duration.millis(150), e -> root.setStyle("-fx-background-color: #ffffff;")),
+            new KeyFrame(Duration.millis(300), e -> root.setStyle(originalStyle))
+        );
+        flashTimeline.play();
+
         Berserker berserker = (Berserker) jogador;
         List<String> logs = berserker.ataqueDuplo(inimigoAtual.getNome(), inimigoAtual.getDefesa());
         for (String log : logs) {
             logArea.appendText(log + "\n");
         }
         String lastLine = logs.get(logs.size() - 1);
-        if (lastLine.startsWith("DANO TOTAL:")) {
-            int dano = Integer.parseInt(lastLine.split(":")[1].trim());
-            inimigoAtual.receberDano(dano);
-            Platform.runLater(() -> updateEnemyInfoPanel());
+        if (lastLine.startsWith("💥 DANO TOTAL:")) {
+            try {
+                int dano = Integer.parseInt(lastLine.split(":")[1].trim().replace(" 💥", ""));
+                inimigoAtual.receberDano(dano);
+                Platform.runLater(() -> updateEnemyInfoPanel());
+            } catch (NumberFormatException ignored) {}
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
             return;
         }
         logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
-        turnoInimigo();
+
+        // Delay before enemy turn
+        Timeline delayTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            turnoInimigo();
+            if (!jogador.estaVivo()) {
+                derrotaCombate();
+            }
+        }));
+        delayTimeline.play();
     }
 
     private void redemoinhoMortalBerserker() {
         if (!emCombate || inimigoAtual == null || !jogador.estaVivo()) return;
+
+        // Green screen flash for player attack
+        String originalStyle = root.getStyle();
+        root.setStyle("-fx-background-color: #e8f5e8;");
+        Timeline flashTimeline = new Timeline(
+            new KeyFrame(Duration.millis(150), e -> root.setStyle("-fx-background-color: #ffffff;")),
+            new KeyFrame(Duration.millis(300), e -> root.setStyle(originalStyle))
+        );
+        flashTimeline.play();
 
         Berserker berserker = (Berserker) jogador;
         List<String> logs = berserker.redemoinhoMortal(inimigoAtual.getNome(), inimigoAtual.getDefesa());
         for (String log : logs) {
             logArea.appendText(log + "\n");
         }
-        if (logs.get(0).matches("\\d+")) {
-            int dano = Integer.parseInt(logs.get(0));
-            inimigoAtual.receberDano(dano);
-            Platform.runLater(() -> updateEnemyInfoPanel());
+        String lastLine = logs.get(logs.size() - 1);
+        if (lastLine.startsWith("💥 DANO TOTAL:")) {
+            try {
+                int dano = Integer.parseInt(lastLine.split(":")[1].trim().replace(" 💥", ""));
+                inimigoAtual.receberDano(dano);
+                Platform.runLater(() -> updateEnemyInfoPanel());
+            } catch (NumberFormatException ignored) {}
         }
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
             return;
         }
         logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
-        turnoInimigo();
+
+        // Delay before enemy turn
+        Timeline delayTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            turnoInimigo();
+            if (!jogador.estaVivo()) {
+                derrotaCombate();
+            }
+        }));
+        delayTimeline.play();
     }
 
     private void comboFinalizadorBerserker() {
         if (!emCombate || inimigoAtual == null || !jogador.estaVivo()) return;
+
+        // Green screen flash for player attack
+        String originalStyle = root.getStyle();
+        root.setStyle("-fx-background-color: #e8f5e8;");
+        Timeline flashTimeline = new Timeline(
+            new KeyFrame(Duration.millis(150), e -> root.setStyle("-fx-background-color: #ffffff;")),
+            new KeyFrame(Duration.millis(300), e -> root.setStyle(originalStyle))
+        );
+        flashTimeline.play();
 
         Berserker berserker = (Berserker) jogador;
         List<String> logs = berserker.comboFinalizador(inimigoAtual.getNome(), inimigoAtual.getDefesa());
         for (String log : logs) {
             logArea.appendText(log + "\n");
         }
-        if (logs.get(0).matches("\\d+")) {
-            int dano = Integer.parseInt(logs.get(0));
-            inimigoAtual.receberDano(dano);
-            Platform.runLater(() -> updateEnemyInfoPanel());
+        String lastLine = logs.get(logs.size() - 1);
+        if (lastLine.startsWith("💥 DANO TOTAL:")) {
+            try {
+                int dano = Integer.parseInt(lastLine.split(":")[1].trim().replace(" 💥", ""));
+                inimigoAtual.receberDano(dano);
+                Platform.runLater(() -> updateEnemyInfoPanel());
+            } catch (NumberFormatException ignored) {}
         }
-        if (inimigoAtual.estaVivo()) {
-            logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
+        if (!inimigoAtual.estaVivo()) {
+            vitoriaCombate();
+            return;
         }
-        turnoInimigo();
+        logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
+
+        // Delay before enemy turn
+        Timeline delayTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            turnoInimigo();
+            if (!jogador.estaVivo()) {
+                derrotaCombate();
+            }
+        }));
+        delayTimeline.play();
     }
 
     // Fuzileiro attack methods
@@ -749,6 +858,8 @@ public class GameScreen {
         if (resultado != null) {
             logArea.appendText(resultado.log.toString() + "\n");
             inimigoAtual.receberDano(resultado.danoFinal);
+            Platform.runLater(() -> updateEnemyInfoPanel());
+            logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
             if (!inimigoAtual.estaVivo()) {
                 vitoriaCombate();
                 return;
@@ -768,6 +879,8 @@ public class GameScreen {
             logArea.appendText(log + "\n");
         }
         inimigoAtual.receberDano(resultado.danoTotal);
+        Platform.runLater(() -> updateEnemyInfoPanel());
+        logArea.appendText("HP Inimigo: " + inimigoAtual.getPontosVida() + "\n\n");
         if (!inimigoAtual.estaVivo()) {
             vitoriaCombate();
             return;
@@ -859,6 +972,13 @@ public class GameScreen {
 
         playerInfoPanel.getChildren().addAll(playerTitle, playerName, playerClass, playerLevel, playerHP, playerAttack, playerDefense);
 
+        // Add ammunition label for Fuzileiro
+        if (jogador instanceof Fuzileiro) {
+            Fuzileiro fuzileiro = (Fuzileiro) jogador;
+            Label playerAmmo = new Label("Munição: " + fuzileiro.getMunicao() + "/" + fuzileiro.getMunicaoMax());
+            playerInfoPanel.getChildren().add(playerAmmo);
+        }
+
         // Enemy info panel (initially empty)
         enemyInfoPanel = new VBox(10);
         enemyInfoPanel.setPadding(new Insets(10));
@@ -885,6 +1005,13 @@ public class GameScreen {
 
         Label levelLabel = (Label) playerInfoPanel.getChildren().get(3);
         levelLabel.setText("Nível: " + jogador.getNivel());
+
+        // Update ammunition for Fuzileiro
+        if (jogador instanceof Fuzileiro && playerInfoPanel.getChildren().size() > 7) {
+            Fuzileiro fuzileiro = (Fuzileiro) jogador;
+            Label ammoLabel = (Label) playerInfoPanel.getChildren().get(7);
+            ammoLabel.setText("Munição: " + fuzileiro.getMunicao() + "/" + fuzileiro.getMunicaoMax());
+        }
     }
 
     private void updateEnemyInfoPanel() {

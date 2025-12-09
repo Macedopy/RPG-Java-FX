@@ -35,19 +35,19 @@ public class CharacterSelection {
         characterBox.setAlignment(Pos.CENTER);
 
         // Berserker
-        VBox berserkerBox = createCharacterCard("Berserker", "berserker.png", () -> {
+        VBox berserkerBox = createCharacterCard("Berserker", "Berserker.jpg", () -> {
             selectedCharacter = new Berserker("Berserker", 150, 20, 15, 1);
             startGame();
         });
 
         // Fuzileiro
-        VBox fuzileiroBox = createCharacterCard("Fuzileiro", "fuzileiro.png", () -> {
+        VBox fuzileiroBox = createCharacterCard("Fuzileiro", "Fuzileiro.png", () -> {
             selectedCharacter = new Fuzileiro("Fuzileiro");
             startGame();
         });
 
         // Mago
-        VBox magoBox = createCharacterCard("Mago", "mago.png", () -> {
+        VBox magoBox = createCharacterCard("Mago", "Mago.jpg", () -> {
             selectedCharacter = new Mago("Mago");
             startGame();
         });
@@ -69,27 +69,27 @@ public class CharacterSelection {
     }
 
     private VBox createCharacterCard(String name, String imagePath, Runnable onSelect) {
-        VBox card = new VBox(10);
+        VBox card = new VBox(15);
         card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(20));
+        card.setPadding(new Insets(30));
         card.setStyle("-fx-border-color: black; -fx-border-width: 2; -fx-background-color: #f0f0f0;");
 
         // Placeholder for image
         ImageView imageView = new ImageView();
         try {
             // Try to load image, if not found, show placeholder
-            Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
+            Image image = new Image(getClass().getResourceAsStream("/rpg/gui/" + imagePath));
             imageView.setImage(image);
         } catch (Exception e) {
             // Placeholder rectangle if image not found
-            imageView.setStyle("-fx-background-color: #cccccc; -fx-min-width: 100; -fx-min-height: 100;");
+            imageView.setStyle("-fx-background-color: #cccccc; -fx-min-width: 150; -fx-min-height: 150;");
         }
-        imageView.setFitWidth(100);
-        imageView.setFitHeight(100);
+        imageView.setFitWidth(150);
+        imageView.setFitHeight(150);
         imageView.setPreserveRatio(true);
 
         Label nameLabel = new Label(name);
-        nameLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        nameLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
         Button selectButton = new Button("Selecionar");
         selectButton.setOnAction(e -> onSelect.run());
